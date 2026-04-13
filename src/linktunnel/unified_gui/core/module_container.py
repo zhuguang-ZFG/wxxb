@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from linktunnel.unified_gui.core.base_module import BaseModule
     from linktunnel.unified_gui.core.config_manager import ConfigManager
     from linktunnel.unified_gui.core.log_manager import LogManager
+
+from linktunnel.unified_gui.core.base_module import BaseModule
 
 try:
     from PyQt6.QtWidgets import QStackedWidget, QWidget

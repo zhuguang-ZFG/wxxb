@@ -18,7 +18,14 @@ try:
     from PyQt6.QtGui import QIcon
     from PyQt6.QtWidgets import QWidget
     
-    class BaseModule(QWidget, ABC):
+    # 创建兼容的元类，结合 QWidget 的元类和 ABCMeta
+    from abc import ABCMeta
+    
+    class BaseModuleMeta(type(QWidget), ABCMeta):
+        """组合 PyQt 和 ABC 的元类"""
+        pass
+    
+    class BaseModule(QWidget, ABC, metaclass=BaseModuleMeta):
         """模块基类（PyQt6 版本）"""
         
         # 信号定义
@@ -125,12 +132,13 @@ try:
             self.log("DEBUG", message)
 
 except ImportError:
-    # tkinter 备选实现
-    import tkinter as tk
-    from tkinter import ttk
-    
-    class BaseModule(ttk.Frame, ABC):  # type: ignore
-        """模块基类（tkinter 版本）"""
+    # tkinter 备选实现（仅在 PyQt6 不可用时使用）
+    try:
+        import tkinter as tk
+        from tkinter import ttk
+        
+        class BaseModule(ttk.Frame, ABC):  # type: ignore
+            """模块基类（tkinter 版本）"""
         
         def __init__(
             self,
@@ -225,3 +233,10 @@ except ImportError:
             """添加日志回调"""
             if callback not in self._log_callbacks:
                 self._log_callbacks.append(callback)
+    
+    except ImportError as e:
+        # 如果 tkinter 也不可用，抛出错误
+        raise ImportError(
+            "Neither PyQt6 nor tkinter is available. "
+            "Please install PyQt6: pip install PyQt6"
+        ) from e

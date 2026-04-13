@@ -51,7 +51,6 @@ print("\n3. 测试配置管理器...")
 try:
     config_manager = ConfigManager()
     print(f"   ✓ 配置管理器创建成功")
-    print(f"   - 配置目录: {config_manager._get_config_dir()}")
 except Exception as e:
     print(f"   ✗ 配置管理器创建失败: {e}")
     import traceback
@@ -62,7 +61,6 @@ print("\n4. 测试日志管理器...")
 try:
     log_manager = LogManager()
     print(f"   ✓ 日志管理器创建成功")
-    print(f"   - 日志目录: {log_manager._get_log_dir()}")
 except Exception as e:
     print(f"   ✗ 日志管理器创建失败: {e}")
     import traceback

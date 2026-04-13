@@ -796,27 +796,35 @@ try:
             self._save_current_config()
 
 except ImportError:
-    # tkinter 备选实现
-    import tkinter as tk
-    from tkinter import ttk
-    
-    class ProxyModule(BaseModule):  # type: ignore
-        """代理管理模块（tkinter 版本）"""
+    # tkinter 备选实现（仅在 PyQt6 不可用时使用）
+    try:
+        import tkinter as tk
+        from tkinter import ttk
         
-        def __init__(
-            self,
-            config_manager: ConfigManager,
-            log_manager: LogManager,
-            parent=None
-        ):
-            super().__init__(config_manager, log_manager, parent)
-            self.log_info("代理管理模块（tkinter 版本）- 功能有限")
+        class ProxyModule(BaseModule):  # type: ignore
+            """代理管理模块（tkinter 版本）"""
             
-            label = ttk.Label(self, text="代理管理模块（tkinter 版本）")
-            label.pack(pady=20)
-        
-        def get_module_name(self) -> str:
-            return "proxy"
-        
-        def get_display_name(self) -> str:
-            return "代理管理"
+            def __init__(
+                self,
+                config_manager: ConfigManager,
+                log_manager: LogManager,
+                parent=None
+            ):
+                super().__init__(config_manager, log_manager, parent)
+                self.log_info("代理管理模块（tkinter 版本）- 功能有限")
+                
+                label = ttk.Label(self, text="代理管理模块（tkinter 版本）")
+                label.pack(pady=20)
+            
+            def get_module_name(self) -> str:
+                return "proxy"
+            
+            def get_display_name(self) -> str:
+                return "代理管理"
+    
+    except ImportError as e:
+        # 如果 tkinter 也不可用，抛出错误
+        raise ImportError(
+            "Neither PyQt6 nor tkinter is available. "
+            "Please install PyQt6: pip install PyQt6"
+        ) from e
