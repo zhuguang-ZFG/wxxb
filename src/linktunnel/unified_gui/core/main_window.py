@@ -83,6 +83,7 @@ try:
             from linktunnel.unified_gui.modules.network_module import NetworkModule
             from linktunnel.unified_gui.modules.proxy_module import ProxyModule
             from linktunnel.unified_gui.modules.grbl_module import GrblModule
+            from linktunnel.unified_gui.modules.ble_module import BLEModule
             from linktunnel.unified_gui.modules.placeholder_module import PlaceholderModule
             
             # 注册串口模块
@@ -104,6 +105,11 @@ try:
             grbl_module = GrblModule(self.config_manager, self.log_manager)
             self.module_container.register_module(grbl_module)
             self.navigation.add_module("grbl", "Grbl CNC", QIcon())
+            
+            # 注册 BLE 模块
+            ble_module = BLEModule(self.config_manager, self.log_manager)
+            self.module_container.register_module(ble_module)
+            self.navigation.add_module("ble", "BLE 蓝牙扫描", QIcon())
             
             # 显示第一个模块
             last_module = self.config_manager.get("last_active_module", "serial")
