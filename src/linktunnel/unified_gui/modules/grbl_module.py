@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 try:
-    from PyQt6.QtCore import QTimer, pyqtSignal
+    from PyQt6.QtCore import QTimer, pyqtSignal, Qt
     from PyQt6.QtGui import QIcon
     from PyQt6.QtWidgets import (
         QComboBox,
@@ -17,6 +17,8 @@ try:
         QHBoxLayout,
         QLabel,
         QLineEdit,
+        QListWidget,
+        QListWidgetItem,
         QProgressBar,
         QPushButton,
         QTabWidget,
@@ -33,6 +35,129 @@ if TYPE_CHECKING or not PYQT_AVAILABLE:
     import tkinter as tk
 
 from linktunnel.unified_gui.core.base_module import BaseModule
+
+
+# Grbl 命令参考
+GRBL_COMMANDS = {
+    "系统命令": {
+        "$H": "回零 - 执行归零循环",
+        "$X": "解锁 - 解除警报状态",
+        "$": "查看设置 - 显示所有参数",
+        "$#": "查看参数 - 显示偏移量和位置",
+        "$G": "查看状态 - 显示当前 G 代码模态状态",
+        "$I": "查看版本 - 显示版本和编译信息",
+        "$N": "启动块 - 显示启动块",
+        "$C": "检查模式 - 切换检查模式",
+        "$RST=$": "恢复默认设置",
+        "$RST=#": "恢复位置",
+        "$RST=*": "恢复全部",
+        "?": "查询状态 - 获取实时状态",
+        "!": "暂停 - 暂停当前操作",
+        "~": "恢复 - 恢复暂停的操作",
+        "^X": "软复位 - 执行软复位",
+    },
+    "G 代码命令": {
+        "G0": "快速移动 - 不切割移动到指定位置",
+        "G1": "直线切割 - 以指定速度切割到指定位置",
+        "G2": "顺时针圆弧 - 顺时针方向的圆弧切割",
+        "G3": "逆时针圆弧 - 逆时针方向的圆弧切割",
+        "G4": "暂停 - 暂停指定时间（毫秒）",
+        "G10": "设置偏移 - 设置工作坐标系偏移",
+        "G17": "XY 平面 - 选择 XY 平面进行圆弧插补",
+        "G18": "XZ 平面 - 选择 XZ 平面进行圆弧插补",
+        "G19": "YZ 平面 - 选择 YZ 平面进行圆弧插补",
+        "G20": "英寸单位 - 使用英寸作为单位",
+        "G21": "毫米单位 - 使用毫米作为单位",
+        "G28": "返回参考点 - 返回到参考点",
+        "G30": "返回第二参考点 - 返回到第二参考点",
+        "G53": "机器坐标 - 使用机器坐标系",
+        "G54-G59": "工作坐标系 - 选择工作坐标系 1-6",
+        "G80": "取消循环 - 取消钻孔或其他循环",
+        "G90": "绝对定位 - 使用绝对坐标",
+        "G91": "相对定位 - 使用相对坐标",
+        "G92": "设置位置 - 设置当前位置为指定值",
+        "G93": "反向时间进给 - 使用反向时间进给",
+        "G94": "每分钟进给 - 使用每分钟进给速率",
+        "G95": "每转进给 - 使用每转进给速率",
+    },
+    "M 代码命令": {
+        "M0": "程序停止 - 停止程序执行",
+        "M1": "可选停止 - 可选的程序停止",
+        "M2": "程序结束 - 结束程序",
+        "M3": "主轴顺时针 - 启动主轴顺时针旋转",
+        "M4": "主轴逆时针 - 启动主轴逆时针旋转",
+        "M5": "主轴停止 - 停止主轴旋转",
+        "M6": "换刀 - 执行换刀操作",
+        "M7": "冷却液 1 - 启动冷却液 1",
+        "M8": "冷却液 2 - 启动冷却液 2",
+        "M9": "冷却液关闭 - 关闭冷却液",
+        "M30": "程序结束并复位 - 结束程序并复位",
+    },
+    "参数设置": {
+        "$0": "步进脉冲时间 (µs)",
+        "$1": "步进空闲延迟 (ms)",
+        "$2": "步进端口反向掩码",
+        "$3": "方向端口反向掩码",
+        "$4": "步进启用反向",
+        "$5": "限位引脚反向",
+        "$6": "探针引脚反向",
+        "$10": "状态报告掩码",
+        "$11": "交接偏差 (mm)",
+        "$12": "弧公差 (mm)",
+        "$13": "报告英寸",
+        "$20": "软限位启用",
+        "$21": "硬限位启用",
+        "$22": "硬限位启用（归零）",
+        "$23": "限位引脚禁用",
+        "$24": "归零搜索速率 (mm/min)",
+        "$25": "归零进给速率 (mm/min)",
+        "$26": "归零搜索脉冲 (mm)",
+        "$27": "归零脉冲延迟 (ms)",
+        "$30": "最大主轴速度 (RPM)",
+        "$31": "最小主轴速度 (RPM)",
+        "$32": "激光模式启用",
+        "$100": "X 轴步数/mm",
+        "$101": "Y 轴步数/mm",
+        "$102": "Z 轴步数/mm",
+        "$110": "X 轴最大速率 (mm/min)",
+        "$111": "Y 轴最大速率 (mm/min)",
+        "$112": "Z 轴最大速率 (mm/min)",
+        "$120": "X 轴加速度 (mm/s²)",
+        "$121": "Y 轴加速度 (mm/s²)",
+        "$122": "Z 轴加速度 (mm/s²)",
+        "$130": "X 轴最大行程 (mm)",
+        "$131": "Y 轴最大行程 (mm)",
+        "$132": "Z 轴最大行程 (mm)",
+    },
+}
+
+
+class GrblCommandHelper:
+    """Grbl 命令助手"""
+
+    @staticmethod
+    def get_all_commands() -> dict[str, dict[str, str]]:
+        """获取所有命令"""
+        return GRBL_COMMANDS
+
+    @staticmethod
+    def get_command_description(cmd: str) -> str:
+        """获取命令描述"""
+        for category, commands in GRBL_COMMANDS.items():
+            if cmd in commands:
+                return commands[cmd]
+        return "未知命令"
+
+    @staticmethod
+    def search_commands(keyword: str) -> list[tuple[str, str, str]]:
+        """搜索命令 - 返回 (category, cmd, desc) 列表"""
+        results = []
+        keyword_lower = keyword.lower()
+        for category, commands in GRBL_COMMANDS.items():
+            for cmd, desc in commands.items():
+                if keyword_lower in cmd.lower() or keyword_lower in desc.lower():
+                    results.append((category, cmd, desc))
+        return results
 
 
 class GrblModule(BaseModule):
@@ -86,6 +211,7 @@ class GrblModule(BaseModule):
         tabs.addTab(self._create_status_tab(), "状态监控")
         tabs.addTab(self._create_stream_tab(), "G代码传输")
         tabs.addTab(self._create_manual_tab(), "手动控制")
+        tabs.addTab(self._create_commands_tab(), "命令参考")
         layout.addWidget(tabs)
 
     def _create_connection_tab(self):
@@ -323,6 +449,83 @@ class GrblModule(BaseModule):
 
         return widget
 
+    def _create_commands_tab(self):
+        """创建命令参考标签页"""
+        widget = QGroupBox("Grbl 命令参考")
+        layout = QVBoxLayout(widget)
+
+        # 搜索框
+        search_layout = QHBoxLayout()
+        search_layout.addWidget(QLabel("搜索:"))
+        self._cmd_search = QLineEdit()
+        self._cmd_search.setPlaceholderText("输入命令或关键词...")
+        self._cmd_search.textChanged.connect(self._on_cmd_search_changed)
+        search_layout.addWidget(self._cmd_search)
+        layout.addLayout(search_layout)
+
+        # 命令列表
+        self._cmd_list = QListWidget()
+        self._cmd_list.itemClicked.connect(self._on_cmd_selected)
+        layout.addWidget(self._cmd_list)
+
+        # 命令详情
+        layout.addWidget(QLabel("命令详情:"))
+        self._cmd_detail = QTextEdit()
+        self._cmd_detail.setReadOnly(True)
+        self._cmd_detail.setMaximumHeight(150)
+        layout.addWidget(self._cmd_detail)
+
+        # 快速发送按钮
+        btn_layout = QHBoxLayout()
+        self._cmd_send_btn = QPushButton("发送选中命令")
+        self._cmd_send_btn.clicked.connect(self._on_send_selected_cmd)
+        btn_layout.addWidget(self._cmd_send_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        # 初始化命令列表
+        self._populate_commands()
+
+        return widget
+
+    def _populate_commands(self):
+        """填充命令列表"""
+        self._cmd_list.clear()
+        for category, commands in GRBL_COMMANDS.items():
+            for cmd, desc in commands.items():
+                item = QListWidgetItem(f"{cmd} - {desc}")
+                item.setData(Qt.ItemDataRole.UserRole, cmd)
+                self._cmd_list.addItem(item)
+
+    def _on_cmd_search_changed(self, text: str):
+        """命令搜索改变"""
+        self._cmd_list.clear()
+        if not text.strip():
+            self._populate_commands()
+            return
+
+        results = GrblCommandHelper.search_commands(text)
+        for category, cmd, desc in results:
+            item = QListWidgetItem(f"[{category}] {cmd} - {desc}")
+            item.setData(Qt.ItemDataRole.UserRole, cmd)
+            self._cmd_list.addItem(item)
+
+    def _on_cmd_selected(self, item: QListWidgetItem):
+        """命令被选中"""
+        cmd = item.data(Qt.ItemDataRole.UserRole)
+        desc = GrblCommandHelper.get_command_description(cmd)
+        self._cmd_detail.setText(f"命令: {cmd}\n\n说明: {desc}")
+
+    def _on_send_selected_cmd(self):
+        """发送选中的命令"""
+        current = self._cmd_list.currentItem()
+        if not current:
+            self.log_warning("请先选中一个命令")
+            return
+
+        cmd = current.data(Qt.ItemDataRole.UserRole)
+        self._send_command(cmd)
+
     def _create_tk_ui(self) -> None:
         """创建 tkinter 界面（简化版）"""
         # 简化的 tkinter 实现
@@ -342,9 +545,9 @@ class GrblModule(BaseModule):
     def _refresh_ports(self) -> None:
         """刷新串口列表"""
         try:
-            from linktunnel.serial_util import list_ports
+            from linktunnel.serial_util import list_serial_ports
 
-            ports = list_ports()
+            ports = list_serial_ports()
             self._port_combo.clear()
             for p in ports:
                 self._port_combo.addItem(f"{p.device} - {p.description}")
@@ -551,11 +754,11 @@ class GrblModule(BaseModule):
         except queue.Empty:
             pass
 
-    def get_occupied_resources(self) -> set[str]:
+    def get_occupied_resources(self) -> list[str]:
         """返回占用的资源"""
         if self._serial:
-            return {f"serial:{self._serial.port}"}
-        return set()
+            return [f"serial:{self._serial.port}"]
+        return []
 
     def stop(self) -> None:
         """停止模块"""

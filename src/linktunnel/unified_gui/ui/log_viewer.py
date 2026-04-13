@@ -64,8 +64,6 @@ try:
             # 导出按钮
             export_btn = QPushButton("导出")
             export_btn.clicked.connect(self._on_export)
-            toolbar.addWidget(clear_btn)
-            export_btn.clicked.connect(self._on_export)
             toolbar.addWidget(export_btn)
             
             layout.addLayout(toolbar)
