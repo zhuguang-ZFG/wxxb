@@ -33,17 +33,27 @@ try:
             self.addWidget(module)
         
         def show_module(self, name: str) -> None:
-            """显示指定模块"""
+            """显示指定模块（优化切换性能）"""
             if name in self._modules:
-                # 停用当前模块
+                # 获取当前模块
                 current = self.get_active_module()
-                if current:
-                    current.on_deactivate()
+                target_module = self._modules[name]
                 
-                # 激活新模块
-                module = self._modules[name]
-                self.setCurrentWidget(module)
-                module.on_activate()
+                # 如果是同一个模块，不需要切换
+                if current == target_module:
+                    return
+                
+                # 使用 QTimer 延迟停用当前模块，避免阻塞 UI
+                if current:
+                    from PyQt6.QtCore import QTimer
+                    QTimer.singleShot(0, current.on_deactivate)
+                
+                # 立即切换显示
+                self.setCurrentWidget(target_module)
+                
+                # 延迟激活新模块
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(0, target_module.on_activate)
         
         def get_active_module(self) -> BaseModule | None:
             """获取当前活动模块"""

@@ -29,8 +29,11 @@ try:
         
         def __init__(self, parent: QWidget | None = None):
             super().__init__(parent)
-            self.max_lines = 10000
+            self.max_lines = 5000  # 减少最大行数以提高性能
             self.current_filter_level = "DEBUG"
+            self._log_buffer = []  # 日志缓冲区
+            self._buffer_size = 100  # 批量处理大小
+            self._update_timer = None  # 延迟更新定时器
             self._setup_ui()
         
         def _setup_ui(self) -> None:
@@ -73,35 +76,68 @@ try:
             layout.addWidget(self.log_text)
         
         def append_log(self, level: str, module: str, message: str) -> None:
-            """添加日志条目"""
+            """添加日志条目（使用批量处理优化性能）"""
             # 检查级别过滤
             if not self._should_show_level(level):
                 return
             
-            # 检查行数限制
-            if self.log_text.document().lineCount() > self.max_lines:
-                cursor = self.log_text.textCursor()
-                cursor.movePosition(QTextCursor.MoveOperation.Start)
-                cursor.movePosition(QTextCursor.MoveOperation.Down, QTextCursor.MoveMode.KeepAnchor, 1000)
-                cursor.removeSelectedText()
-            
-            # 格式化日志
+            # 添加到缓冲区
             from datetime import datetime
             timestamp = datetime.now().strftime("%H:%M:%S")
-            log_line = f"[{timestamp}] [{level}] [{module}] {message}\n"
+            self._log_buffer.append((timestamp, level, module, message))
             
-            # 设置颜色
+            # 如果缓冲区达到阈值，立即刷新
+            if len(self._log_buffer) >= self._buffer_size:
+                self._flush_log_buffer()
+            else:
+                # 否则延迟刷新（100ms）
+                if self._update_timer is None:
+                    from PyQt6.QtCore import QTimer
+                    self._update_timer = QTimer()
+                    self._update_timer.setSingleShot(True)
+                    self._update_timer.timeout.connect(self._flush_log_buffer)
+                
+                if not self._update_timer.isActive():
+                    self._update_timer.start(100)
+        
+        def _flush_log_buffer(self) -> None:
+            """刷新日志缓冲区到显示区域"""
+            if not self._log_buffer:
+                return
+            
+            # 检查行数限制（批量删除旧日志）
+            current_lines = self.log_text.document().lineCount()
+            if current_lines > self.max_lines:
+                cursor = self.log_text.textCursor()
+                cursor.movePosition(QTextCursor.MoveOperation.Start)
+                # 删除超出部分的一半，避免频繁删除
+                lines_to_remove = min(current_lines - self.max_lines + 1000, current_lines // 2)
+                cursor.movePosition(QTextCursor.MoveOperation.Down, QTextCursor.MoveMode.KeepAnchor, lines_to_remove)
+                cursor.removeSelectedText()
+            
+            # 批量插入日志
             cursor = self.log_text.textCursor()
             cursor.movePosition(QTextCursor.MoveOperation.End)
             
-            fmt = QTextCharFormat()
-            fmt.setForeground(self.LEVEL_COLORS.get(level, QColor(0, 0, 0)))
-            cursor.setCharFormat(fmt)
-            cursor.insertText(log_line)
+            # 暂时禁用自动滚动以提高性能
+            scrollbar = self.log_text.verticalScrollBar()
+            at_bottom = scrollbar.value() >= scrollbar.maximum() - 10
             
-            # 自动滚动到底部
-            self.log_text.setTextCursor(cursor)
-            self.log_text.ensureCursorVisible()
+            for timestamp, level, module, message in self._log_buffer:
+                log_line = f"[{timestamp}] [{level}] [{module}] {message}\n"
+                
+                fmt = QTextCharFormat()
+                fmt.setForeground(self.LEVEL_COLORS.get(level, QColor(0, 0, 0)))
+                cursor.setCharFormat(fmt)
+                cursor.insertText(log_line)
+            
+            # 只有在底部时才自动滚动
+            if at_bottom:
+                self.log_text.setTextCursor(cursor)
+                self.log_text.ensureCursorVisible()
+            
+            # 清空缓冲区
+            self._log_buffer.clear()
         
         def _should_show_level(self, level: str) -> bool:
             """检查是否应该显示该级别的日志"""
@@ -134,6 +170,9 @@ try:
         
         def clear(self) -> None:
             """清空日志"""
+            self._log_buffer.clear()
+            if self._update_timer and self._update_timer.isActive():
+                self._update_timer.stop()
             self.log_text.clear()
         
         def _on_export(self) -> None:

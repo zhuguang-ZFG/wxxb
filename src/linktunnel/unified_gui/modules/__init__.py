@@ -6,6 +6,7 @@ from linktunnel.unified_gui.modules.network_module import NetworkModule
 from linktunnel.unified_gui.modules.proxy_module import ProxyModule
 from linktunnel.unified_gui.modules.grbl_module import GrblModule
 from linktunnel.unified_gui.modules.ble_module import BLEModule
+from linktunnel.unified_gui.modules.i2c_module import I2CModule
 
 __all__ = [
     "PlaceholderModule",
@@ -14,4 +15,5 @@ __all__ = [
     "ProxyModule",
     "GrblModule",
     "BLEModule",
+    "I2CModule",
 ]
