@@ -78,23 +78,32 @@ try:
             """注册所有功能模块"""
             from PyQt6.QtGui import QIcon
             
-            # 这里将注册所有模块
-            # 目前先添加占位符
+            # 导入真实模块
+            from linktunnel.unified_gui.modules.serial_module import SerialModule
+            from linktunnel.unified_gui.modules.network_module import NetworkModule
+            from linktunnel.unified_gui.modules.proxy_module import ProxyModule
+            from linktunnel.unified_gui.modules.grbl_module import GrblModule
             from linktunnel.unified_gui.modules.placeholder_module import PlaceholderModule
             
-            # 注册占位符模块
-            for name, display in [
-                ("serial", "串口工具"),
-                ("network", "网络中继"),
-                ("proxy", "代理管理"),
-            ]:
-                module = PlaceholderModule(
-                    name, display,
-                    self.config_manager,
-                    self.log_manager
-                )
-                self.module_container.register_module(module)
-                self.navigation.add_module(name, display, QIcon())
+            # 注册串口模块
+            serial_module = SerialModule(self.config_manager, self.log_manager)
+            self.module_container.register_module(serial_module)
+            self.navigation.add_module("serial", "串口工具", QIcon())
+            
+            # 注册网络模块
+            network_module = NetworkModule(self.config_manager, self.log_manager)
+            self.module_container.register_module(network_module)
+            self.navigation.add_module("network", "网络中继", QIcon())
+            
+            # 注册代理模块
+            proxy_module = ProxyModule(self.config_manager, self.log_manager)
+            self.module_container.register_module(proxy_module)
+            self.navigation.add_module("proxy", "代理管理", QIcon())
+            
+            # 注册 Grbl 模块
+            grbl_module = GrblModule(self.config_manager, self.log_manager)
+            self.module_container.register_module(grbl_module)
+            self.navigation.add_module("grbl", "Grbl CNC", QIcon())
             
             # 显示第一个模块
             last_module = self.config_manager.get("last_active_module", "serial")
@@ -181,21 +190,47 @@ except ImportError:
         
         def _register_modules(self) -> None:
             """注册所有功能模块"""
+            from linktunnel.unified_gui.modules.serial_module import SerialModule
+            from linktunnel.unified_gui.modules.network_module import NetworkModule
+            from linktunnel.unified_gui.modules.proxy_module import ProxyModule
+            from linktunnel.unified_gui.modules.grbl_module import GrblModule
             from linktunnel.unified_gui.modules.placeholder_module import PlaceholderModule
             
-            for name, display in [
-                ("serial", "串口工具"),
-                ("network", "网络中继"),
-                ("proxy", "代理管理"),
-            ]:
-                module = PlaceholderModule(
-                    name, display,
-                    self.config_manager,
-                    self.log_manager,
-                    self.module_container
-                )
-                self.module_container.register_module(module)
-                self.navigation.add_module(name, display)
+            # 注册串口模块
+            serial_module = SerialModule(
+                self.config_manager,
+                self.log_manager,
+                self.module_container
+            )
+            self.module_container.register_module(serial_module)
+            self.navigation.add_module("serial", "串口工具")
+            
+            # 注册网络模块
+            network_module = NetworkModule(
+                self.config_manager,
+                self.log_manager,
+                self.module_container
+            )
+            self.module_container.register_module(network_module)
+            self.navigation.add_module("network", "网络中继")
+            
+            # 注册代理模块
+            proxy_module = ProxyModule(
+                self.config_manager,
+                self.log_manager,
+                self.module_container
+            )
+            self.module_container.register_module(proxy_module)
+            self.navigation.add_module("proxy", "代理管理")
+            
+            # 注册 Grbl 模块
+            grbl_module = GrblModule(
+                self.config_manager,
+                self.log_manager,
+                self.module_container
+            )
+            self.module_container.register_module(grbl_module)
+            self.navigation.add_module("grbl", "Grbl CNC")
             
             last_module = self.config_manager.get("last_active_module", "serial")
             self.navigation.set_active_module(last_module)
