@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/apple/Documents/GitHub/wxxb/logs/.ab549eb99af30e0c13a7240986b3f53331b7e094-audit.json",
+    "files": [
+        {
+            "date": 1776043319659,
+            "name": "/Users/apple/Documents/GitHub/wxxb/logs/mcp-puppeteer-2026-04-13.log",
+            "hash": "e28661de053cf26d1a9e3f4578a826b384dcb6d0a403109ddccaba338b3a7e18"
+        }
+    ],
+    "hashType": "sha256"
+}
