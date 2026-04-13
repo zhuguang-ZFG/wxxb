@@ -335,6 +335,162 @@ class ProxyNodeManager:
             logger.error(f"从订阅拉取节点失败: {e}")
             return []
     
+    def search_github_hotspot_repos(self, keyword: str = "proxy", language: str = "python") -> list[dict[str, str]]:
+        """从 GitHub 搜索开放的热点节点仓库
+        
+        Args:
+            keyword: 搜索关键词 (默认: proxy)
+            language: 编程语言 (默认: python)
+        
+        Returns:
+            仓库信息列表 [{"name": "...", "url": "...", "description": "..."}]
+        """
+        try:
+            # 搜索 GitHub 仓库
+            search_url = "https://api.github.com/search/repositories"
+            params = {
+                "q": f"{keyword} language:{language} stars:>100",
+                "sort": "stars",
+                "order": "desc",
+                "per_page": 10,
+            }
+            
+            response = requests.get(
+                search_url,
+                params=params,
+                timeout=10,
+                headers={"User-Agent": "linktunnel/1.0"}
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            repos = []
+            
+            for item in data.get("items", []):
+                repo_info = {
+                    "name": item.get("name", ""),
+                    "full_name": item.get("full_name", ""),
+                    "url": item.get("html_url", ""),
+                    "description": item.get("description", ""),
+                    "stars": item.get("stargazers_count", 0),
+                    "language": item.get("language", ""),
+                }
+                repos.append(repo_info)
+            
+            logger.info(f"从 GitHub 搜索到 {len(repos)} 个热点仓库")
+            return repos
+        
+        except Exception as e:
+            logger.error(f"搜索 GitHub 仓库失败: {e}")
+            return []
+    
+    def fetch_from_github_hotspot(self, keyword: str = "proxy", language: str = "python") -> list[str]:
+        """从 GitHub 热点仓库自动拉取节点
+        
+        Args:
+            keyword: 搜索关键词
+            language: 编程语言
+        
+        Returns:
+            新增的节点名称列表
+        """
+        new_nodes = []
+        
+        try:
+            # 搜索热点仓库
+            repos = self.search_github_hotspot_repos(keyword, language)
+            
+            for repo in repos:
+                try:
+                    full_name = repo.get("full_name", "")
+                    if not full_name:
+                        continue
+                    
+                    # 尝试从常见文件拉取节点
+                    file_paths = [
+                        "nodes.txt",
+                        "nodes.json",
+                        "README.md",
+                        "subscribe.txt",
+                        "proxy.txt",
+                        "list.txt",
+                    ]
+                    
+                    for file_path in file_paths:
+                        try:
+                            url = f"https://raw.githubusercontent.com/{full_name}/main/{file_path}"
+                            response = requests.get(
+                                url,
+                                timeout=5,
+                                headers={"User-Agent": "linktunnel/1.0"}
+                            )
+                            
+                            if response.status_code == 200:
+                                # 解析节点
+                                lines = response.text.strip().split("\n")
+                                for i, line in enumerate(lines):
+                                    line = line.strip()
+                                    if not line or line.startswith("#"):
+                                        continue
+                                    
+                                    # 假设格式为: name|url 或 url
+                                    if "|" in line:
+                                        name, node_url = line.split("|", 1)
+                                        name = name.strip()
+                                        node_url = node_url.strip()
+                                    else:
+                                        name = f"github_{repo['name']}_{i}"
+                                        node_url = line
+                                    
+                                    if self.add_node(name, node_url, source="github_hotspot"):
+                                        new_nodes.append(name)
+                                
+                                logger.info(f"从 {full_name}/{file_path} 拉取了 {len(lines)} 个节点")
+                                break
+                        
+                        except Exception as e:
+                            logger.debug(f"尝试 {full_name}/{file_path} 失败: {e}")
+                            continue
+                
+                except Exception as e:
+                    logger.error(f"处理仓库 {repo.get('full_name')} 失败: {e}")
+                    continue
+            
+            logger.info(f"从 GitHub 热点仓库拉取了 {len(new_nodes)} 个新节点")
+            return new_nodes
+        
+        except Exception as e:
+            logger.error(f"从 GitHub 热点仓库拉取节点失败: {e}")
+            return []
+    
+    def auto_fetch_hotspot_nodes(self) -> dict[str, Any]:
+        """自动从 GitHub 热点仓库拉取节点
+        
+        Returns:
+            拉取结果 {"repos": 仓库数, "nodes": 节点数, "timestamp": 时间}
+        """
+        try:
+            logger.info("开始自动拉取 GitHub 热点节点...")
+            
+            # 搜索热点仓库
+            repos = self.search_github_hotspot_repos()
+            
+            # 拉取节点
+            new_nodes = self.fetch_from_github_hotspot()
+            
+            result = {
+                "repos": len(repos),
+                "nodes": len(new_nodes),
+                "timestamp": datetime.now().isoformat(),
+            }
+            
+            logger.info(f"自动拉取完成: {len(repos)} 个仓库, {len(new_nodes)} 个新节点")
+            return result
+        
+        except Exception as e:
+            logger.error(f"自动拉取失败: {e}")
+            return {"repos": 0, "nodes": 0, "error": str(e)}
+    
     def get_nodes(self) -> dict[str, dict[str, Any]]:
         """获取所有节点
         

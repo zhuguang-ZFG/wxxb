@@ -96,6 +96,27 @@ class NodeManagementDialog(QDialog):
         
         layout.addLayout(sub_layout)
         
+        # 从 GitHub 热点拉取
+        hotspot_layout = QHBoxLayout()
+        hotspot_layout.addWidget(QLabel("搜索关键词:"))
+        self._hotspot_keyword = QLineEdit()
+        self._hotspot_keyword.setText("proxy")
+        self._hotspot_keyword.setMaximumWidth(100)
+        hotspot_layout.addWidget(self._hotspot_keyword)
+        
+        hotspot_layout.addWidget(QLabel("语言:"))
+        self._hotspot_lang = QComboBox()
+        self._hotspot_lang.addItems(["python", "go", "rust", "javascript", "all"])
+        self._hotspot_lang.setMaximumWidth(100)
+        hotspot_layout.addWidget(self._hotspot_lang)
+        
+        hotspot_btn = QPushButton("从 GitHub 热点拉取")
+        hotspot_btn.clicked.connect(self._on_fetch_hotspot)
+        hotspot_layout.addWidget(hotspot_btn)
+        
+        hotspot_layout.addStretch()
+        layout.addLayout(hotspot_layout)
+        
         # 节点列表
         layout.addWidget(QLabel("节点列表:"))
         self._tree = QTreeWidget()
@@ -195,6 +216,19 @@ class NodeManagementDialog(QDialog):
         QMessageBox.information(self, "成功", f"已拉取 {len(new_nodes)} 个新节点")
         self._refresh_tree()
     
+    def _on_fetch_hotspot(self) -> None:
+        """从 GitHub 热点拉取"""
+        keyword = self._hotspot_keyword.text().strip() or "proxy"
+        language = self._hotspot_lang.currentText()
+        
+        def fetch_worker() -> None:
+            new_nodes = self.node_manager.fetch_from_github_hotspot(keyword, language)
+            QMessageBox.information(self, "成功", f"已拉取 {len(new_nodes)} 个新节点")
+            self._refresh_tree()
+        
+        threading.Thread(target=fetch_worker, daemon=True).start()
+        QMessageBox.information(self, "提示", "正在后台拉取 GitHub 热点节点...")
+    
     def _on_verify_selected(self) -> None:
         """验证选中节点"""
         selected = self._tree.selectedItems()
@@ -282,6 +316,10 @@ if PYQT_AVAILABLE:
             cleanup_btn.clicked.connect(self._on_cleanup)
             btn_layout.addWidget(cleanup_btn)
             
+            hotspot_btn = QPushButton("拉取 GitHub 热点节点")
+            hotspot_btn.clicked.connect(self._on_fetch_hotspot_nodes)
+            btn_layout.addWidget(hotspot_btn)
+            
             btn_layout.addStretch()
             layout.addLayout(btn_layout)
             
@@ -296,6 +334,10 @@ if PYQT_AVAILABLE:
             self._update_time_combo.addItems(["02:00", "03:00", "04:00", "05:00"])
             self._update_time_combo.setCurrentText("02:00")
             auto_layout.addWidget(self._update_time_combo)
+            
+            self._auto_hotspot_cb = QCheckBox("启用每日自动拉取热点节点")
+            self._auto_hotspot_cb.setChecked(True)
+            auto_layout.addWidget(self._auto_hotspot_cb)
             
             auto_layout.addStretch()
             layout.addLayout(auto_layout)
@@ -360,6 +402,18 @@ if PYQT_AVAILABLE:
             removed = self.node_manager.cleanup_invalid_nodes()
             self.log_info(f"已清除 {len(removed)} 个失效节点")
             self._update_stats()
+        
+        def _on_fetch_hotspot_nodes(self) -> None:
+            """拉取 GitHub 热点节点"""
+            def fetch_worker() -> None:
+                self.log_info("正在拉取 GitHub 热点节点...")
+                result = self.node_manager.auto_fetch_hotspot_nodes()
+                msg = f"拉取完成: {result['repos']} 个仓库, {result['nodes']} 个新节点"
+                self._log_text.append(msg)
+                self.log_info(msg)
+                self._update_stats()
+            
+            threading.Thread(target=fetch_worker, daemon=True).start()
         
         def _on_update_complete(self, result: dict[str, Any]) -> None:
             """每日更新完成回调"""
